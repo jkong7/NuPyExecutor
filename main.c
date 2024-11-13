@@ -1,9 +1,10 @@
 /*main.c*/
 
 //
-// Main program to scan and parse nuPython programs.
+// Main program to scan, parse, and execute nuPython code. It handles a file input, checks the syntax via the parser, builds a program graph, 
+// and executes the program using a RAM memory module. 
 // 
-// Author: Prof. Joe Hummel
+// Author: Jonathan Kong
 // Northwestern University
 // CS 211
 //

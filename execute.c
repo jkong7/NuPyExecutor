@@ -1,7 +1,8 @@
 /*execute.c*/
 
 //
-// << WHAT IS THE PURPOSE OF THIS FILE??? >>
+// Executes NuPython code in C - for project 06, it executes only straight-line code - that is function calls, assignments, and pass statements
+// Traverses the program graph, interprets the statements, and executes them by interacting with a RAM memory module for variable storage.
 //
 // Jonathan Kong 
 // Norhtwestern University 
@@ -16,6 +17,7 @@
 #include <stdbool.h>  // true, false
 #include <string.h>
 #include <assert.h>
+#include <math.h> 
 
 #include "programgraph.h"
 #include "ram.h"
@@ -23,10 +25,73 @@
 
 
 //
-// Public functions:
+// retrieve_value
+//
+// Helper function to retrieve the integer value from an expression 
+// Used to decrypt both the lhs and rhs expressions - deals with two cases:
+// int_literal and identifier (for which interaction with the RAM module is necessary)
+// Called in execute_binary_expression to compute lhs and rhs of binary expression 
+// Returns false if semantic error (identifier not found in RAM), else true
+//
+bool retrive_value(struct UNARY_EXPR* expr, int* result, struct RAM* memory) {
+  char* string_value = expr->element->element_value; 
+  if (expr->element->element_type==ELEMENT_INT_LITERAL) {
+    int num = atoi(string_value); 
+    *result=num; 
+  } else if (expr->element->element_type==ELEMENT_IDENTIFIER) {
+    struct RAM_VALUE* cell_ram_value = ram_read_cell_by_name(memory, string_value); 
+    if (cell_ram_value==NULL) {
+      return false; 
+    }
+    int return_value_from_memory=cell_ram_value->types.i; 
+    *result=return_value_from_memory; 
+  }
+  return true; 
+}
+
+//
+// execute_binary_expression 
+//
+// Executes binary expression by combining lhs and rhs values with appropriate operator 
+// Places answer in pass by reference variable result, and returns false if semantic error, else true
+//
+bool execute_binary_expression(struct EXPR* expr, int* result, struct RAM* memory) {
+  struct UNARY_EXPR* lhs=expr->lhs; 
+  struct UNARY_EXPR* rhs=expr->rhs; 
+  int result_lhs; 
+  int result_rhs; 
+  bool lhs_success = retrive_value(lhs, &result_lhs, memory); 
+  bool rhs_success = retrive_value(rhs, &result_rhs, memory); 
+  printf("%d, %d\n", result_lhs, result_rhs);
+  if (!lhs_success || !rhs_success) {
+    return false; 
+  }
+  int res; 
+  if (expr->operator==OPERATOR_PLUS) {
+    res = result_lhs + result_rhs; 
+  } else if (expr->operator==OPERATOR_MINUS) {
+    res = result_lhs - result_rhs; 
+  } else if (expr->operator==OPERATOR_ASTERISK) {
+    res = result_lhs * result_rhs; 
+  } else if (expr->operator==OPERATOR_DIV) {
+    res = result_lhs / result_rhs; 
+  } else if (expr->operator==OPERATOR_MOD) {
+    res = result_lhs % result_rhs; 
+  } else if (expr->operator==OPERATOR_POWER) {
+    res = pow(result_lhs, result_rhs); 
+  }
+  *result=res; 
+  return true; 
+}
+
+//
+// execute_assignment
+//
+// Executes an assignment statement, handles both binary expressions and unary expressions, supporting 
+// int literals and identifiers. Writes to RAM memory. Returns false if semantic error and stops execution, 
+// returns true otherwise
 //
 
-//true if executes successfully, false if not 
 bool execute_assignment(struct STMT* stmt, struct RAM* memory) {
   char* var_name = stmt->types.assignment->var_name; 
   char* string_rhs = NULL; 
@@ -72,6 +137,13 @@ bool execute_assignment(struct STMT* stmt, struct RAM* memory) {
   return true; 
 } 
 
+//
+// execute_function_call
+//
+// Executes a function call statement, handles print() with int literals, string literals,
+// and identifiers (prints value assigned to identifier variable). Returns false if semantic error and stops execution, 
+// returns true otherwise
+// 
 bool execute_function_call(struct STMT* stmt, struct RAM* memory) {
   struct ELEMENT* element = stmt->types.function_call->parameter; 
   int line = stmt->line; 
@@ -98,38 +170,6 @@ bool execute_function_call(struct STMT* stmt, struct RAM* memory) {
     char* str_literal = element->element_value; 
     printf("%s\n", str_literal); 
   }
-  return true; 
-}
-
-bool retrive_value(struct UNARY_EXPR* expr, int* result, struct RAM* memory) {
-  char* string_value = expr->element->element_value; 
-  if (expr->element->element_type==ELEMENT_INT_LITERAL) {
-    int num = atoi(string_value); 
-    *result=num; 
-  } else if (expr->element->element_type==ELEMENT_IDENTIFIER) {
-    struct RAM_VALUE* cell_ram_value = ram_read_cell_by_name(memory, string_value); 
-    if (cell_ram_value==NULL) {
-      return false; 
-    }
-    int return_value_from_memory=cell_ram_value->types.i; 
-    *result=return_value_from_memory; 
-  }
-  return true; 
-}
-
-//compute result and then do *result=res
-bool execute_binary_expression(struct EXPR* expr, int* result, struct RAM* memory) {
-  struct UNARY_EXPR* lhs=expr->lhs; 
-  struct UNARY_EXPR* rhs=expr->rhs; 
-  int result_lhs; 
-  int result_rhs; 
-  bool lhs_success = retrive_value(lhs, &result_lhs, memory); 
-  bool rhs_success = retrive_value(lhs, &result_rhs, memory); 
-  if (!lhs_success || !rhs_success) {
-    return false; 
-  }
-  int res; 
-  *result=res; 
   return true; 
 }
 
