@@ -19,6 +19,9 @@
 #include "token.h"    // token defs
 #include "scanner.h" 
 #include "parser.h"
+#include "programgraph.h"
+#include "ram.h"
+#include "execute.h"
 
 
 //
@@ -86,9 +89,15 @@ int main(int argc, char* argv[])
     //
     // TODO:
     //
+    printf("**building program graph...\n"); 
+    struct STMT* program = programgraph_build(tokens); 
+    programgraph_print(program); 
 
-
-
+    printf("**executing...\n"); 
+    struct RAM* memory = ram_init();
+    execute(program, memory); 
+    printf("**done\n"); 
+    ram_print(memory); 
     tokenqueue_destroy(tokens);
   }
 
