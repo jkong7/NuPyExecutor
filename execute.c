@@ -33,7 +33,7 @@
 // Called in execute_binary_expression to compute lhs and rhs of binary expression 
 // Returns false if semantic error (identifier not found in RAM), else true
 //
-bool retrive_value(struct UNARY_EXPR* expr, int* result, struct RAM* memory) {
+bool retrive_value(struct UNARY_EXPR* expr, int* result, struct RAM* memory, int line) {
   char* string_value = expr->element->element_value; 
   if (expr->element->element_type==ELEMENT_INT_LITERAL) {
     int num = atoi(string_value); 
@@ -41,6 +41,7 @@ bool retrive_value(struct UNARY_EXPR* expr, int* result, struct RAM* memory) {
   } else if (expr->element->element_type==ELEMENT_IDENTIFIER) {
     struct RAM_VALUE* cell_ram_value = ram_read_cell_by_name(memory, string_value); 
     if (cell_ram_value==NULL) {
+      printf("**SEMANTIC ERROR: name '%s' is not defined (line %d)\n", string_value, line);
       return false; 
     }
     int return_value_from_memory=cell_ram_value->types.i; 
@@ -55,14 +56,13 @@ bool retrive_value(struct UNARY_EXPR* expr, int* result, struct RAM* memory) {
 // Executes binary expression by combining lhs and rhs values with appropriate operator 
 // Places answer in pass by reference variable result, and returns false if semantic error, else true
 //
-bool execute_binary_expression(struct EXPR* expr, int* result, struct RAM* memory) {
+bool execute_binary_expression(struct EXPR* expr, int* result, struct RAM* memory, int line) {
   struct UNARY_EXPR* lhs=expr->lhs; 
   struct UNARY_EXPR* rhs=expr->rhs; 
   int result_lhs; 
   int result_rhs; 
-  bool lhs_success = retrive_value(lhs, &result_lhs, memory); 
-  bool rhs_success = retrive_value(rhs, &result_rhs, memory); 
-  printf("%d, %d\n", result_lhs, result_rhs);
+  bool lhs_success = retrive_value(lhs, &result_lhs, memory, line); 
+  bool rhs_success = retrive_value(rhs, &result_rhs, memory, line); 
   if (!lhs_success || !rhs_success) {
     return false; 
   }
@@ -105,9 +105,8 @@ bool execute_assignment(struct STMT* stmt, struct RAM* memory) {
 
     if (expr->isBinaryExpr) {
       int result; 
-      bool success = execute_binary_expression(expr, &result, memory); 
+      bool success = execute_binary_expression(expr, &result, memory, line); 
       if (!success) {
-        printf("**SEMANTIC ERROR at line %d\n", line);
         return false; 
       }
       i.types.i=result; 
@@ -190,7 +189,7 @@ void execute(struct STMT* program, struct RAM* memory)
     if (stmt->stmt_type==STMT_ASSIGNMENT) {
       bool success = execute_assignment(stmt, memory);
       if (!success) {
-        return;
+        return; 
       }
       stmt=stmt->types.assignment->next_stmt; 
     } else if (stmt->stmt_type==STMT_FUNCTION_CALL) {
@@ -200,7 +199,7 @@ void execute(struct STMT* program, struct RAM* memory)
       }
       stmt=stmt->types.function_call->next_stmt; 
     } else if (stmt->stmt_type==STMT_PASS) {
-      stmt=stmt->types.pass->next_stmt; 
+      stmt=stmt->types.pass->next_stmt; //done for pass, just move onto next statement
     } 
   }
 }
